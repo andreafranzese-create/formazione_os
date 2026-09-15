@@ -251,6 +251,7 @@ spec:
     defaultRequest: {cpu: "100m", memory: 64Mi}    # → requests
     max:            {cpu: "1",    memory: 512Mi}
     min:            {cpu: "10m",  memory: 16Mi}
+EOF
 ```
 
 Il pod viene accettato con le risorse iniettate, pur non avendole dichiarate.
