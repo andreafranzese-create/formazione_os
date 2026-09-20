@@ -86,19 +86,19 @@ Manifest del pod con cui testiamo lo sforo dei limiti:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: sforo
+  name: test
   namespace: t4
   labels:
     test: quota
 spec:
   restartPolicy: Never
   containers:
-  - name: sforo
-    image: nginx:1.27
-    resources:
-      limits:
-        cpu: "600m"
-        memory: "256Mi"
+    - name: test
+      image: nginx:1.27
+      resources:
+        limits:
+          cpu: "600m"
+          memory: "256Mi"
 ```
 
 Se applichiamo il manifest esce come output:
@@ -114,13 +114,13 @@ Il limite può anche sforare con più pod nello stesso namespace:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: acc1
+  name: test1
   namespace: t4
   labels: {test: quota}
 spec:
   restartPolicy: Never
   containers:
-  - name: acc
+  - name: test1
     image: nginx:1.27
     resources:
       limits: {cpu: "200m", memory: "64Mi"}
@@ -128,13 +128,13 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: acc2
+  name: test2
   namespace: t4
   labels: {test: quota}
 spec:
   restartPolicy: Never
   containers:
-  - name: acc
+  - name: test2
     image: nginx:1.27
     resources:
       limits: {cpu: "200m", memory: "64Mi"}
@@ -142,13 +142,13 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: acc3
+  name: test3
   namespace: t4
   labels: {test: quota}
 spec:
   restartPolicy: Never
   containers:
-  - name: acc
+  - name: test3
     image: nginx:1.27
     resources:
       limits: {cpu: "200m", memory: "64Mi"}
@@ -221,7 +221,7 @@ metadata:
 spec:
   restartPolicy: Never
   containers:
-  - name: nudo
+  - name: test
     image: nginx:1.27
 ```
 
