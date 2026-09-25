@@ -1,6 +1,0 @@
-- name: Installa docker e deploy sulle vms
-  hosts: all
-  become: true
-  roles:
-    - docker
-    - deploy

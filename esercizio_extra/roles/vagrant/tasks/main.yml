@@ -52,3 +52,13 @@
     option: inventory
     value: "{{ vagrant_inventory_file }}"
     mode: "0644"
+
+- name: Aggiungi le VM all'inventory in memoria
+  ansible.builtin.add_host:
+    name: "{{ item.name }}"
+    groups: "{{ item.name }}"
+    ansible_host: "{{ item.interfaces[0].ip }}"
+    ansible_user: vagrant
+    ansible_ssh_private_key_file: "{{ vagrant_workdir }}/.vagrant/machines/{{ item.name }}/{{ vagrant_provider }}/private_key"
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+  loop: "{{ vms }}"

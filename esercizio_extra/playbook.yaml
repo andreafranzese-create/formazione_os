@@ -1,0 +1,12 @@
+- name: Crea le VM
+  hosts: localhost
+  gather_facts: false
+  roles:
+    - vagrant
+
+- name: Installa docker e deploy sulle vms
+  hosts: all
+  become: true
+  roles:
+    - docker
+    - deploy
