@@ -7,7 +7,7 @@ elasticsearch_volume: elasticsearch-data
 elasticsearch_image: docker.elastic.co/elasticsearch/elasticsearch
 elasticsearch_tag: "9.5.4"
 elasticsearch_container_name: elasticsearch
-elasticsearch_ports: [ 9200, 9100 ]
+elasticsearch_ports: [ 9200, "{{ node_exporter_ports['elasticsearch-host'] }}" ]
 elasticsearch_heap: 1g
 elasticsearch_jvm_options_dir: /opt/elasticsearch/jvm.options.d
 
@@ -15,7 +15,7 @@ grafana_ip: 192.168.56.11
 grafana_image: grafana/grafana
 grafana_tag: "13.2.2"
 grafana_container_name: grafana
-grafana_ports: [ 3000, 9101 ]
+grafana_ports: [ 3000, "{{ node_exporter_ports['monitoring-grafana'] }}" ]
 grafana_volume: grafana-data
 grafana_provisioning_dir: /opt/grafana/provisioning
 grafana_admin_user: admin
@@ -28,7 +28,7 @@ prometheus_ip: 192.168.56.12
 prometheus_image: prom/prometheus
 prometheus_tag: "v3.14.0"
 prometheus_container_name: prometheus
-prometheus_ports: [ 9090, 9102 ]
+prometheus_ports: [ 9090, "{{ node_exporter_ports['monitoring-prometheus'] }}" ]
 prometheus_volume: prometheus-data
 prometheus_config_dir: /opt/prometheus
 prometheus_scrape_interval: 15s
@@ -40,9 +40,6 @@ node_exporter_arch: amd64
 node_exporter_user: vagrant
 node_exporter_bin: /usr/local/bin/node_exporter
 node_exporter_url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}.tar.gz"
-node_exporter_options_elasticsearch: "--web.listen-address=:{{ node_exporter_port_elasticsearch }}"
-node_exporter_options_grafana: "--web.listen-address=:{{ node_exporter_port_grafana }}"
-node_exporter_options_prometheus: "--web.listen-address=:{{ node_exporter_port_prometheus }}"
 node_exporter_ports:
   elasticsearch-host: 9100
   monitoring-grafana: 9101
