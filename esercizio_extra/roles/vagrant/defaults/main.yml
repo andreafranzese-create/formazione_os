@@ -1,0 +1,27 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for vagrant
+vagrant_workdir: "{{ playbook_dir }}/vms"
+vagrant_provider: virtualbox
+vagrant_box: generic/rocky9
+vagrant_inventory_file: "{{ playbook_dir }}/inventory/vagrant.ini"
+
+vms:
+  - name: elasticsearch-host
+    memory: 1024
+    cpus: 1
+    interfaces:
+      - network_name: private_network
+        ip: 192.168.56.10
+  - name: monitoring-grafana
+    memory: 1024
+    cpus: 1
+    interfaces:
+      - network_name: private_network
+        ip: 192.168.56.11
+  - name: monitoring-prometheus
+    memory: 1024
+    cpus: 1
+    interfaces:
+      - network_name: private_network
+        ip: 192.168.56.12

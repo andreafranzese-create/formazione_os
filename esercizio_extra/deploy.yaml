@@ -1,0 +1,6 @@
+- name: Installa docker sulle vms
+  hosts: all
+  become: true
+  roles:
+    - docker
+    - tasks

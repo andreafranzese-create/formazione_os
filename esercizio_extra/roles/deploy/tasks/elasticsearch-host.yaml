@@ -1,0 +1,48 @@
+---
+
+- name: Apri le porte nel firewall
+  ansible.posix.firewalld:
+    port: "{{ item }}/tcp"
+    permanent: true
+    immediate: true
+    state: enabled
+  loop: "{{ elasticsearch_ports }}"
+
+- name: Directory per le opzioni JVM
+  ansible.builtin.file:
+    path: "{{ elasticsearch_jvm_options_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: File con l'heap di Elasticsearch
+  ansible.builtin.template:
+    src: heap.j2
+    dest: "{{ elasticsearch_jvm_options_dir }}/heap.options"
+    mode: "0644"
+  notify: Riavvia Elasticsearch
+
+- name: Scarica l'immagine di Elasticsearch
+  community.docker.docker_image:
+    name: "{{ elasticsearch_image }}"
+    tag: "{{ elasticsearch_tag }}"
+    source: pull
+
+- name: Crea il volume per i dati di Elasticsearch
+  community.docker.docker_volume:
+    name: "{{ elasticsearch_volume }}"
+    state: present
+
+- name: Avvia il container Elasticsearch
+  community.docker.docker_container:
+    name: "{{ elasticsearch_container_name }}"
+    image: "{{ elasticsearch_image }}:{{ elasticsearch_tag }}"
+    state: started
+    restart_policy: unless-stopped
+    published_ports:
+      - "{{ elasticsearch_ports[0] }}:9200"
+    volumes:
+      - "{{ elasticsearch_volume }}:/usr/share/elasticsearch/data"
+      - "{{ elasticsearch_jvm_options_dir }}/heap.options:/usr/share/elasticsearch/config/jvm.options.d/heap.options:ro"
+    env:
+      discovery.type: single-node
+      xpack.security.enabled: "false"                                      

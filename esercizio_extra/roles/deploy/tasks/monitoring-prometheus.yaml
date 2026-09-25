@@ -1,0 +1,49 @@
+---
+
+- name: Apri la porta nel firewall
+  ansible.posix.firewalld:
+    port: "{{ item }}/tcp"
+    permanent: true
+    immediate: true
+    state: enabled
+  loop: "{{ prometheus_ports }}"
+
+- name: Directory di configurazione di Prometheus
+  ansible.builtin.file:
+    path: "{{ prometheus_config_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: File di configurazione di Prometheus
+  ansible.builtin.template:
+    src: prometheus.yaml.j2
+    dest: "{{ prometheus_config_dir }}/prometheus.yaml"
+    mode: "0644"
+  notify: Riavvia Prometheus
+
+- name: Scarica l'immagine di Prometheus
+  community.docker.docker_image:
+    name: "{{ prometheus_image }}"
+    tag: "{{ prometheus_tag }}"
+    source: pull
+
+- name: Crea il volume per i dati di Prometheus
+  community.docker.docker_volume:
+    name: "{{ prometheus_volume }}"
+    state: present
+
+- name: Avvia il container Prometheus
+  community.docker.docker_container:
+    name: "{{ prometheus_container_name }}"
+    image: "{{ prometheus_image }}:{{ prometheus_tag }}"
+    state: started
+    restart_policy: unless-stopped
+    published_ports:
+      - "{{ prometheus_ports[0] }}:9090"
+    volumes:
+      - "{{ prometheus_volume }}:/prometheus"
+      - "{{ prometheus_config_dir }}:/etc/prometheus:ro"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yaml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time={{ prometheus_retention }}"

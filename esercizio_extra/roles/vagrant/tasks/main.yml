@@ -1,0 +1,54 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for vagrant
+
+- name: Directory di lavoro per Vagrant
+  ansible.builtin.file:
+    path: "{{ vagrant_workdir }}"
+    state: directory
+
+- name: Stato del Vagrantfile prima
+  ansible.builtin.stat:
+    path: "{{ vagrant_workdir }}/Vagrantfile"
+  register: vagrantfile_before
+
+- name: Crea e avvia le VM
+  community.vagrant.vagrant:
+    instances: "{{ vms }}"
+    default_box: "{{ vagrant_box }}"
+    provider_name: "{{ vagrant_provider }}"
+    state: up
+  environment:
+    MOLECULE_EPHEMERAL_DIRECTORY: "{{ vagrant_workdir }}"
+
+- name: Stato del Vagrantfile dopo
+  ansible.builtin.stat:
+    path: "{{ vagrant_workdir }}/Vagrantfile"
+  register: vagrantfile_after
+
+- name: Riavvia le VM per applicare la nuova configurazione
+  ansible.builtin.command:
+    cmd: vagrant reload
+    chdir: "{{ vagrant_workdir }}"
+  when:
+    - vagrantfile_before.stat.exists
+    - vagrantfile_before.stat.checksum != vagrantfile_after.stat.checksum
+
+- name: Directory per l'inventory
+  ansible.builtin.file:
+    path: "{{ vagrant_inventory_file | dirname }}"
+    state: directory
+
+- name: Genera l'inventory delle VM
+  ansible.builtin.template:
+    src: inventory.j2
+    dest: "{{ vagrant_inventory_file }}"
+    mode: "0644"
+
+- name: Imposta l'inventory in ansible.cfg
+  community.general.ini_file:
+    path: "{{ playbook_dir }}/ansible.cfg"
+    section: defaults
+    option: inventory
+    value: "{{ vagrant_inventory_file }}"
+    mode: "0644"

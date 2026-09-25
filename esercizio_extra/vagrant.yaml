@@ -1,0 +1,5 @@
+- name: Crea le VM
+  hosts: localhost
+  gather_facts: false
+  roles:
+    - vagrant

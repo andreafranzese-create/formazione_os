@@ -1,0 +1,9 @@
+[all:vars]
+ansible_user=vagrant
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+
+{% for vm in vms %}
+[{{ vm.name }}]
+{{ vm.name }} ansible_host={{ vm.interfaces[0].ip }} ansible_ssh_private_key_file={{ vagrant_workdir }}/.vagrant/machines/{{ vm.name }}/{{ vagrant_provider }}/private_key
+
+{% endfor %}

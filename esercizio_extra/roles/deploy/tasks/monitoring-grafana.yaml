@@ -1,0 +1,67 @@
+---
+
+- name: Apri la porta nel firewall
+  ansible.posix.firewalld:
+    port: "{{ item }}/tcp"
+    permanent: true
+    immediate: true
+    state: enabled
+  loop: "{{ grafana_ports }}"
+
+- name: Directory di provisioning delle datasource
+  ansible.builtin.file:
+    path: "{{ grafana_provisioning_dir }}/datasources"
+    state: directory
+    mode: "0755"
+
+- name: File di provisioning delle datasource
+  ansible.builtin.template:
+    src: datasources.yaml.j2
+    dest: "{{ grafana_provisioning_dir }}/datasources/datasources.yaml"
+    mode: "0644"
+  notify: Riavvia Grafana
+
+- name: Scarica l'immagine di Grafana
+  community.docker.docker_image:
+    name: "{{ grafana_image }}"
+    tag: "{{ grafana_tag }}"
+    source: pull
+
+- name: Crea il volume per i dati di Grafana
+  community.docker.docker_volume:
+    name: "{{ grafana_volume }}"
+    state: present
+
+- name: Avvia il container Grafana
+  community.docker.docker_container:
+    name: "{{ grafana_container_name }}"
+    image: "{{ grafana_image }}:{{ grafana_tag }}"
+    state: started
+    restart_policy: unless-stopped
+    published_ports:
+      - "{{ grafana_ports[0] }}:3000"
+    volumes:
+      - "{{ grafana_volume }}:/var/lib/grafana"
+      - "{{ grafana_provisioning_dir }}/datasources:/etc/grafana/provisioning/datasources:ro"
+    env:
+      GF_SECURITY_ADMIN_USER: "{{ grafana_admin_user }}"
+      GF_SECURITY_ADMIN_PASSWORD: "{{ grafana_admin_password }}"
+
+- name: Attendi che Grafana risponda
+  ansible.builtin.uri:
+    url: "http://localhost:{{ grafana_ports[0] }}/api/health"
+    status_code: 200
+  register: grafana_health
+  until: grafana_health.status == 200
+  retries: 30
+  delay: 5
+
+- name: Importa le dashboard da grafana.com
+  community.grafana.grafana_dashboard:
+    grafana_url: "http://localhost:{{ grafana_ports[0] }}"
+    grafana_user: "{{ grafana_admin_user }}"
+    grafana_password: "{{ grafana_admin_password }}"
+    dashboard_id: "{{ grafana_dashboard_id }}"
+    dashboard_revision: "{{ grafana_dashboard_revision }}"
+    overwrite: true
+    state: present

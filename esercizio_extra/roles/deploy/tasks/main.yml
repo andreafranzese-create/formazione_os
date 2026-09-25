@@ -1,0 +1,60 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for tasks
+
+- name: Installa la libreria requests per i moduli Docker
+  ansible.builtin.dnf:
+    name: python3-requests
+    state: present
+
+- name: Directory dei servizi utente
+  ansible.builtin.file:
+    path: "/home/{{ node_exporter_user }}/.config/systemd/user"
+    state: directory
+    owner: "{{ node_exporter_user }}"
+    group: "{{ node_exporter_user }}"
+    mode: "0755"
+
+- name: Scarica ed estrai node_exporter
+  ansible.builtin.unarchive:
+    src: "{{ node_exporter_url }}"
+    dest: /tmp
+    remote_src: true
+    creates: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}/node_exporter"
+
+- name: Copia il binario
+  ansible.builtin.copy:
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}/node_exporter"
+    dest: "{{ node_exporter_bin }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+    setype: bin_t
+  notify: Riavvia node_exporter
+
+- name: Servizio utente di node_exporter
+  ansible.builtin.template:
+    src: node_exporter.service.j2
+    dest: "/home/{{ node_exporter_user }}/.config/systemd/user/node_exporter.service"
+    owner: "{{ node_exporter_user }}"
+    group: "{{ node_exporter_user }}"
+    mode: "0644"
+  notify: Riavvia node_exporter
+
+- name: Mantieni attivo il systemd dell'utente anche senza login
+  ansible.builtin.command:
+    cmd: "loginctl enable-linger {{ node_exporter_user }}"
+    creates: "/var/lib/systemd/linger/{{ node_exporter_user }}"
+
+- name: Avvia e abilita node_exporter
+  ansible.builtin.systemd_service:
+    name: node_exporter
+    scope: user
+    state: started
+    enabled: true
+    daemon_reload: true
+  become_user: "{{ node_exporter_user }}"
+
+- name: Icludi task in base all'hostname
+  ansible.builtin.include_tasks: "{{ inventory_hostname }}.yaml"

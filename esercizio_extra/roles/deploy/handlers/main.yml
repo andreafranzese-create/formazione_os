@@ -1,0 +1,23 @@
+#SPDX-License-Identifier: MIT-0
+---
+# handlers file for tasks
+
+- name: Riavvia Elasticsearch
+  ansible.builtin.command:
+    cmd: "docker restart {{ elasticsearch_container_name }}"
+
+- name: Riavvia Grafana
+  ansible.builtin.command:
+    cmd: "docker restart {{ grafana_container_name }}"
+
+- name: Riavvia Prometheus
+  ansible.builtin.command:
+    cmd: "docker restart {{ prometheus_container_name }}"
+
+- name: Riavvia node_exporter
+  ansible.builtin.systemd_service:
+    name: node_exporter
+    scope: user
+    state: restarted
+    daemon_reload: true
+  become_user: "{{ node_exporter_user }}"
