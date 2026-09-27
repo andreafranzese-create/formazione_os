@@ -1,12 +1,11 @@
 ---
 
-- name: Apri la porta nel firewall
+- name: Apri la porta di Prometheus nel firewall
   ansible.posix.firewalld:
-    port: "{{ item }}/tcp"
+    port: "{{ prometheus_port }}/tcp"
     permanent: true
     immediate: true
     state: enabled
-  loop: "{{ prometheus_ports }}"
 
 - name: Directory di configurazione di Prometheus
   ansible.builtin.file:
@@ -39,7 +38,7 @@
     state: started
     restart_policy: unless-stopped
     published_ports:
-      - "{{ prometheus_ports[0] }}:9090"
+      - "{{ prometheus_port }}:9090"
     volumes:
       - "{{ prometheus_volume }}:/prometheus"
       - "{{ prometheus_config_dir }}:/etc/prometheus:ro"

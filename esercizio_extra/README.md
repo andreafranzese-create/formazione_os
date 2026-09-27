@@ -35,15 +35,12 @@ Prometheus raccoglie le metriche dei 3 node_exporter e Grafana le mostra nella d
                 └────────────────────────────┘          └────────────────────────────┘
 ```
 
-Ogni node_exporter ascolta su una porta diversa (9100, 9101, 9102) e Prometheus ha 3 target statici, uno per VM.
-
-
 ---
 
 ## I ruoli
 
 ### `vagrant` – creazione delle VM
-Gira su `localhost`. Con il modulo `community.vagrant.vagrant` genera il `Vagrantfile` e avvia le 3 VM Rocky 9 su VirtualBox, poi scrive l'inventory `inventory/vagrant.ini`, aggiorna il `ansible.cfg` e aggiunge le VM all'inventory in memoria.
+Gira su `localhost`. Con il modulo `community.vagrant.vagrant` genera il `Vagrantfile` e avvia le 3 VM Rocky 9 su VirtualBox, poi scrive l'inventory `inventory/vagrant.ini` e aggiunge le VM all'inventory in memoria.
 Dettagli: [roles/vagrant/README.md](roles/vagrant/README.md)
 
 ### `docker` – installazione di Docker
@@ -66,8 +63,10 @@ Dettagli: [roles/deploy/README.md](roles/deploy/README.md)
 - Le collection Ansible:
 
 ```bash
-ansible-galaxy collection install community.vagrant community.docker community.grafana community.general ansible.posix
+ansible-galaxy collection install community.vagrant community.docker community.grafana ansible.posix
 ```
+
+- La password dell'admin di Grafana, cifrata con Ansible Vault in `group_vars/monitoring-grafana/vault.yaml`:
 
 ---
 
@@ -76,7 +75,7 @@ ansible-galaxy collection install community.vagrant community.docker community.g
 | Cosa | Dove |
 |---|---|
 | Elasticsearch | http://192.168.56.10:9200 |
-| Grafana (admin / admin123) | http://192.168.56.11:3000 → dashboard **Node Exporter Full** |
+| Grafana (admin / password del vault) | http://192.168.56.11:3000 → dashboard **Node Exporter Full** |
 | Prometheus – stato dei target | http://192.168.56.12:9090/targets (devono essere 3, tutti `UP`) |
 | Metriche node_exporter | http://192.168.56.10:9100/metrics · http://192.168.56.11:9101/metrics · http://192.168.56.12:9102/metrics |
 

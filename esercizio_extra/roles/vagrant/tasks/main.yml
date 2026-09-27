@@ -45,14 +45,6 @@
     dest: "{{ vagrant_inventory_file }}"
     mode: "0644"
 
-- name: Imposta l'inventory in ansible.cfg
-  community.general.ini_file:
-    path: "{{ playbook_dir }}/ansible.cfg"
-    section: defaults
-    option: inventory
-    value: "{{ vagrant_inventory_file }}"
-    mode: "0644"
-
 - name: Aggiungi le VM all'inventory in memoria
   ansible.builtin.add_host:
     name: "{{ item.name }}"
@@ -62,3 +54,4 @@
     ansible_ssh_private_key_file: "{{ vagrant_workdir }}/.vagrant/machines/{{ item.name }}/{{ vagrant_provider }}/private_key"
     ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
   loop: "{{ vms }}"
+  when: item.name not in groups['all']

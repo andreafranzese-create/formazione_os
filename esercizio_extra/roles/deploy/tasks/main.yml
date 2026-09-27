@@ -56,5 +56,12 @@
     daemon_reload: true
   become_user: "{{ node_exporter_user }}"
 
+- name: Apri la porta di node_exporter nel firewall
+  ansible.posix.firewalld:
+    port: "{{ node_exporter_ports[inventory_hostname] }}/tcp"
+    permanent: true
+    immediate: true
+    state: enabled
+
 - name: Icludi task in base all'hostname
   ansible.builtin.include_tasks: "{{ inventory_hostname }}.yaml"

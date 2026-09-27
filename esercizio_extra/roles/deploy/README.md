@@ -23,7 +23,8 @@ Qui viene installato node_exporter **senza Docker** e **senza root**: il binario
 | 5 | **Servizio utente di node_exporter** | `ansible.builtin.template` | Scrive `node_exporter.service` in `~/.config/systemd/user/` dal template `node_exporter.service.j2`, con la porta della VM. Se cambia, notifica il riavvio. |
 | 6 | **Mantieni attivo il systemd dell'utente anche senza login** | `ansible.builtin.command` | Esegue `loginctl enable-linger <utente>`. Senza linger i servizi utente partono solo quando l'utente fa login e si fermano al logout; con linger partono al boot. `creates` rende il task idempotente (il file `/var/lib/systemd/linger/<utente>` esiste già se il linger è attivo). |
 | 7 | **Avvia e abilita node_exporter** | `ansible.builtin.systemd_service` | Con `scope: user` e `become_user: <utente>` fa `daemon-reload`, avvia il servizio e lo abilita all'avvio. È l'equivalente di `systemctl --user enable --now node_exporter` lanciato come `vagrant`. |
-| 8 | **Includi task in base all'hostname** | `ansible.builtin.include_tasks` | Include `{{ inventory_hostname }}.yaml`, cioè il file di task con lo stesso nome della VM. |
+| 8 | **Apri la porta di node_exporter nel firewall** | `ansible.posix.firewalld` | Apre in modo permanente e immediato la porta di node_exporter della VM, presa da `node_exporter_ports[inventory_hostname]` (9100, 9101 o 9102). |
+| 9 | **Includi task in base all'hostname** | `ansible.builtin.include_tasks` | Include `{{ inventory_hostname }}.yaml`, cioè il file di task con lo stesso nome della VM. |
 
 ---
 
@@ -31,7 +32,7 @@ Qui viene installato node_exporter **senza Docker** e **senza root**: il binario
 
 | # | Task | Modulo | Cosa fa |
 |---|---|---|---|
-| 1 | **Apri le porte nel firewall** | `ansible.posix.firewalld` | Apre in modo permanente e immediato le porte di `elasticsearch_ports`: 9200 (Elasticsearch) e 9100 (node_exporter). |
+| 1 | **Apri la porta di Elasticsearch nel firewall** | `ansible.posix.firewalld` | Apre in modo permanente e immediato `elasticsearch_port` (9200). |
 | 2 | **Directory per le opzioni JVM** | `ansible.builtin.file` | Crea sulla VM `elasticsearch_jvm_options_dir` (`/opt/elasticsearch/jvm.options.d`). |
 | 3 | **File con l'heap di Elasticsearch** | `ansible.builtin.template` | Genera `heap.options` dal template `heap.j2` con `-Xms1g` e `-Xmx1g`. Se cambia, riavvia il container. |
 | 4 | **Scarica l'immagine di Elasticsearch** | `community.docker.docker_image` | Fa il pull di `elasticsearch_image:elasticsearch_tag`. |
@@ -44,7 +45,7 @@ Qui viene installato node_exporter **senza Docker** e **senza root**: il binario
 
 | # | Task | Modulo | Cosa fa |
 |---|---|---|---|
-| 1 | **Apri la porta nel firewall** | `ansible.posix.firewalld` | Apre le porte di `grafana_ports`: 3000 (Grafana) e 9101 (node_exporter). |
+| 1 | **Apri la porta di Grafana nel firewall** | `ansible.posix.firewalld` | Apre `grafana_port` (3000). |
 | 2 | **Directory di provisioning delle datasource** | `ansible.builtin.file` | Crea `<grafana_provisioning_dir>/datasources` sulla VM. |
 | 3 | **File di provisioning delle datasource** | `ansible.builtin.template` | Genera `datasources.yaml` dal template: Grafana, all'avvio, crea da solo la datasource Prometheus (così non va aggiunta a mano). Se cambia, riavvia il container. |
 | 4 | **Scarica l'immagine di Grafana** | `community.docker.docker_image` | Pull di `grafana_image:grafana_tag`. |
@@ -59,7 +60,7 @@ Qui viene installato node_exporter **senza Docker** e **senza root**: il binario
 
 | # | Task | Modulo | Cosa fa |
 |---|---|---|---|
-| 1 | **Apri la porta nel firewall** | `ansible.posix.firewalld` | Apre le porte di `prometheus_ports`: 9090 (Prometheus) e 9102 (node_exporter). |
+| 1 | **Apri la porta di Prometheus nel firewall** | `ansible.posix.firewalld` | Apre `prometheus_port` (9090). |
 | 2 | **Directory di configurazione di Prometheus** | `ansible.builtin.file` | Crea `prometheus_config_dir` (`/opt/prometheus`). |
 | 3 | **File di configurazione di Prometheus** | `ansible.builtin.template` | Genera `prometheus.yaml` dal template con i 3 target node_exporter. Se cambia, riavvia il container. |
 | 4 | **Scarica l'immagine di Prometheus** | `community.docker.docker_image` | Pull di `prometheus_image:prometheus_tag`. |
@@ -93,9 +94,9 @@ Unit systemd utente. `ExecStart` lancia il binario con `--web.listen-address=:<p
 
 ### `prometheus.yaml.j2` → `/opt/prometheus/prometheus.yaml`
 - `global.scrape_interval` → ogni quanto Prometheus legge le metriche.
-- Un job `node` con **3 target statici**, uno per VM, ognuno con la label `vm` (nome della VM) per distinguerli nelle query e in Grafana. Prometheus legge l'endpoint `/metrics` di default.
+- Un job `node` con **un target statico per ogni host** di `groups['all']`, generato con un ciclo `{% for host in groups['all'] %}`. Ogni target ha la label `vm` (nome della VM) per distinguerli nelle query e in Grafana.
 
-La porta di ogni target è il secondo elemento della lista `*_ports` della VM (`elasticsearch_ports[1]`, `grafana_ports[1]`, `prometheus_ports[1]`).
+L'indirizzo di ogni target è `hostvars[host].ansible_host` (l'IP preso dall'inventory) e la porta è `node_exporter_ports[host]`.
 
 ### `datasources.yaml.j2` → `/opt/grafana/provisioning/datasources/datasources.yaml`
 File di provisioning di Grafana che crea la datasource:
@@ -118,12 +119,11 @@ File di provisioning di Grafana che crea la datasource:
 
 | Variabile | Default | Significato |
 |---|---|---|
-| `elasticsearch_ip` | `192.168.56.10` | IP della VM Elasticsearch, usato da Prometheus come target. |
 | `elasticsearch_volume` | `elasticsearch-data` | Nome del volume Docker per i dati. |
 | `elasticsearch_image` | `docker.elastic.co/elasticsearch/elasticsearch` | Immagine Docker ufficiale. |
 | `elasticsearch_tag` | `"9.5.4"` | Versione dell'immagine. |
 | `elasticsearch_container_name` | `elasticsearch` | Nome del container (usato anche dall'handler). |
-| `elasticsearch_ports` | `[ 9200, 9100 ]` | `[0]` = porta di Elasticsearch, `[1]` = porta di node_exporter su questa VM. Entrambe aperte nel firewall. |
+| `elasticsearch_port` | `9200` | Porta di Elasticsearch, pubblicata dal container e aperta nel firewall. |
 | `elasticsearch_heap` | `1g` | Dimensione dell'heap JVM (`-Xms` e `-Xmx`). |
 | `elasticsearch_jvm_options_dir` | `/opt/elasticsearch/jvm.options.d` | Cartella sulla VM dove viene scritto `heap.options`. |
 
@@ -131,16 +131,15 @@ File di provisioning di Grafana che crea la datasource:
 
 | Variabile | Default | Significato |
 |---|---|---|
-| `grafana_ip` | `192.168.56.11` | IP della VM Grafana, usato da Prometheus come target. |
 | `grafana_image` | `grafana/grafana` | Immagine Docker. |
 | `grafana_tag` | `"13.2.2"` | Versione dell'immagine. |
 | `grafana_container_name` | `grafana` | Nome del container. |
-| `grafana_ports` | `[ 3000, 9101 ]` | `[0]` = porta di Grafana, `[1]` = porta di node_exporter su questa VM. |
+| `grafana_port` | `3000` | Porta di Grafana, pubblicata dal container e aperta nel firewall. |
 | `grafana_volume` | `grafana-data` | Volume persistente montato in `/var/lib/grafana`. |
 | `grafana_provisioning_dir` | `/opt/grafana/provisioning` | Cartella sulla VM con i file di provisioning. |
 | `grafana_admin_user` | `admin` | Utente admin di Grafana (usato anche per importare la dashboard). |
-| `grafana_admin_password` | `admin123` | Password admin. In un ambiente reale va messa in Ansible Vault. |
-| `grafana_prometheus_url` | `"http://{{ prometheus_ip }}:9090"` | URL della datasource Prometheus. |
+| `grafana_admin_password` | `"{{ vault_grafana_admin_password }}"` | Password admin. Il valore vero sta cifrato con Ansible Vault in `group_vars/monitoring-grafana/vault.yaml` (serve `--ask-vault-pass` al lancio). |
+| `grafana_prometheus_url` | `"http://{{ hostvars[groups['monitoring-prometheus'][0]].ansible_host }}:{{ prometheus_port }}"` | URL della datasource Prometheus. L'IP viene preso dall'inventory (primo host del gruppo `monitoring-prometheus`). |
 | `grafana_dashboard_id` | `1860` | ID della dashboard su grafana.com (Node Exporter Full). |
 | `grafana_dashboard_revision` | `45` | Revisione della dashboard da scaricare. |
 
@@ -148,11 +147,10 @@ File di provisioning di Grafana che crea la datasource:
 
 | Variabile | Default | Significato |
 |---|---|---|
-| `prometheus_ip` | `192.168.56.12` | IP della VM Prometheus (target e URL della datasource). |
 | `prometheus_image` | `prom/prometheus` | Immagine Docker. |
 | `prometheus_tag` | `"v3.14.0"` | Versione dell'immagine. |
 | `prometheus_container_name` | `prometheus` | Nome del container. |
-| `prometheus_ports` | `[ 9090, 9102 ]` | `[0]` = porta di Prometheus, `[1]` = porta di node_exporter su questa VM. |
+| `prometheus_port` | `9090` | Porta di Prometheus, pubblicata dal container, aperta nel firewall e usata nell'URL della datasource di Grafana. |
 | `prometheus_volume` | `prometheus-data` | Volume persistente montato in `/prometheus`. |
 | `prometheus_config_dir` | `/opt/prometheus` | Cartella sulla VM con `prometheus.yaml`. |
 | `prometheus_scrape_interval` | `15s` | Intervallo di scraping. |
@@ -163,9 +161,8 @@ File di provisioning di Grafana che crea la datasource:
 | Variabile | Default | Significato |
 |---|---|---|
 | `node_exporter_version` | `"1.12.1"` | Versione da scaricare. |
-| `node_exporter_arch` | `amd64` | Architettura del pacchetto. |
+| `node_exporter_arch` | `"{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"` | Architettura del pacchetto, ricavata dai fact della VM: `arm64` su VM ARM, altrimenti `amd64`. |
 | `node_exporter_user` | `vagrant` | Utente non root che esegue il servizio systemd utente. |
 | `node_exporter_bin` | `/usr/local/bin/node_exporter` | Dove viene installato il binario. |
 | `node_exporter_url` | URL della release GitHub | Costruito da versione e architettura: `.../v1.12.1/node_exporter-1.12.1.linux-amd64.tar.gz`. |
-| `node_exporter_ports` | `elasticsearch-host: 9100`<br>`monitoring-grafana: 9101`<br>`monitoring-prometheus: 9102` | Porta di ascolto di node_exporter per ogni VM (chiave = `inventory_hostname`). Usata nella unit systemd. |
-| `node_exporter_options_elasticsearch`<br>`node_exporter_options_grafana`<br>`node_exporter_options_prometheus` | `"--web.listen-address=:<porta>"` | Opzioni di avvio per VM. **Al momento non sono usate** da nessun task o template (la unit costruisce l'opzione da `node_exporter_ports`). |
+| `node_exporter_ports` | `elasticsearch-host: 9100`<br>`monitoring-grafana: 9101`<br>`monitoring-prometheus: 9102` | Porta di node_exporter per ogni VM (chiave = nome della VM). È l'unico punto in cui sono definite: la usano la unit systemd, il firewall e i target di Prometheus. |

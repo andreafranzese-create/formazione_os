@@ -1,12 +1,11 @@
 ---
 
-- name: Apri le porte nel firewall
+- name: Apri la porta di Elasticsearch nel firewall
   ansible.posix.firewalld:
-    port: "{{ item }}/tcp"
+    port: "{{ elasticsearch_port }}/tcp"
     permanent: true
     immediate: true
     state: enabled
-  loop: "{{ elasticsearch_ports }}"
 
 - name: Directory per le opzioni JVM
   ansible.builtin.file:
@@ -39,7 +38,7 @@
     state: started
     restart_policy: unless-stopped
     published_ports:
-      - "{{ elasticsearch_ports[0] }}:9200"
+      - "{{ elasticsearch_port }}:9200"
     volumes:
       - "{{ elasticsearch_volume }}:/usr/share/elasticsearch/data"
       - "{{ elasticsearch_jvm_options_dir }}/heap.options:/usr/share/elasticsearch/config/jvm.options.d/heap.options:ro"

@@ -17,8 +17,7 @@ Il ruolo gira sulla **macchina di controllo** (`hosts: localhost`, `gather_facts
 | 5 | **Riavvia le VM per applicare la nuova configurazione** | `ansible.builtin.command` | Esegue `vagrant reload` **solo se** il `Vagrantfile` esisteva già e il checksum è cambiato (es. hai modificato RAM, CPU o IP). Il modulo `vagrant` da solo non riapplica le modifiche a VM già accese. |
 | 6 | **Directory per l'inventory** | `ansible.builtin.file` | Crea la cartella che conterrà il file di inventory (`inventory/`). |
 | 7 | **Genera l'inventory delle VM** | `ansible.builtin.template` | Dal template `inventory.j2` scrive `inventory/vagrant.ini`: un gruppo per ogni VM, con IP, utente `vagrant` e path della chiave privata generata da Vagrant. |
-| 8 | **Imposta l'inventory in ansible.cfg** | `community.general.ini_file` | Scrive in `ansible.cfg`, sezione `[defaults]`, `inventory = <vagrant_inventory_file>`. Così i comandi lanciati dopo (`ansible all -m ping`, ecc.) usano già l'inventory giusto. |
-| 9 | **Aggiungi le VM all'inventory in memoria** | `ansible.builtin.add_host` | Aggiunge le VM all'inventory del run in corso, ognuna in un gruppo con il suo nome. Serve perché l'inventory viene letto all'avvio di `ansible-playbook`: senza questo passaggio, al primo lancio il secondo play (`hosts: all`) non troverebbe nessuna VM. |
+| 8 | **Aggiungi le VM all'inventory in memoria** | `ansible.builtin.add_host` | Aggiunge le VM all'inventory del run in corso, ognuna in un gruppo con il suo nome. Serve perché l'inventory viene letto all'avvio di `ansible-playbook`: senza questo passaggio, se il playbook parte senza inventory, il secondo play (`hosts: all`) non troverebbe nessuna VM. Con `when: item.name not in groups['all']` aggiunge solo le VM che non sono già nell'inventory letto all'avvio (per esempio se lanci con `-i inventory/vagrant.ini`). |
 
 ---
 
@@ -39,7 +38,7 @@ Genera l'inventory in formato INI:
 | `vagrant_workdir` | `"{{ playbook_dir }}/vms"` | Cartella in cui Vagrant lavora: contiene `Vagrantfile`, `.vagrant/` e i log. |
 | `vagrant_provider` | `virtualbox` | Provider di Vagrant. Si usa sia per creare le VM sia per costruire il path della chiave SSH. |
 | `vagrant_box` | `generic/rocky9` | Box usata per tutte le VM (Rocky Linux 9). |
-| `vagrant_inventory_file` | `"{{ playbook_dir }}/inventory/vagrant.ini"` | Path dell'inventory generato, scritto anche in `ansible.cfg`. |
+| `vagrant_inventory_file` | `"{{ playbook_dir }}/inventory/vagrant.ini"` | Path dell'inventory generato |
 | `vms` | vedi sotto | Lista delle VM da creare. |
 
 ### Struttura della lista `vms`

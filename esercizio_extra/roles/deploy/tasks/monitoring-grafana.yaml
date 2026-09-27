@@ -1,12 +1,11 @@
 ---
 
-- name: Apri la porta nel firewall
+- name: Apri la porta di Grafana nel firewall
   ansible.posix.firewalld:
-    port: "{{ item }}/tcp"
+    port: "{{ grafana_port }}/tcp"
     permanent: true
     immediate: true
     state: enabled
-  loop: "{{ grafana_ports }}"
 
 - name: Directory di provisioning delle datasource
   ansible.builtin.file:
@@ -39,7 +38,7 @@
     state: started
     restart_policy: unless-stopped
     published_ports:
-      - "{{ grafana_ports[0] }}:3000"
+      - "{{ grafana_port }}:3000"
     volumes:
       - "{{ grafana_volume }}:/var/lib/grafana"
       - "{{ grafana_provisioning_dir }}/datasources:/etc/grafana/provisioning/datasources:ro"
@@ -49,7 +48,7 @@
 
 - name: Attendi che Grafana risponda
   ansible.builtin.uri:
-    url: "http://localhost:{{ grafana_ports[0] }}/api/health"
+    url: "http://localhost:{{ grafana_port }}/api/health"
     status_code: 200
   register: grafana_health
   until: grafana_health.status == 200
@@ -58,7 +57,7 @@
 
 - name: Importa le dashboard da grafana.com
   community.grafana.grafana_dashboard:
-    grafana_url: "http://localhost:{{ grafana_ports[0] }}"
+    grafana_url: "http://localhost:{{ grafana_port }}"
     grafana_user: "{{ grafana_admin_user }}"
     grafana_password: "{{ grafana_admin_password }}"
     dashboard_id: "{{ grafana_dashboard_id }}"
