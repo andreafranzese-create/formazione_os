@@ -44,4 +44,4 @@
       - "{{ elasticsearch_jvm_options_dir }}/heap.options:/usr/share/elasticsearch/config/jvm.options.d/heap.options:ro"
     env:
       discovery.type: single-node
-      xpack.security.enabled: "false"                                      
+      xpack.security.enabled: "false"

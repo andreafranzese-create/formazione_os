@@ -1,4 +1,4 @@
-#SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: MIT-0
 ---
 # tasks file for vagrant
 
@@ -6,6 +6,7 @@
   ansible.builtin.file:
     path: "{{ vagrant_workdir }}"
     state: directory
+    mode: "0755"
 
 - name: Stato del Vagrantfile prima
   ansible.builtin.stat:
@@ -14,12 +15,11 @@
 
 - name: Crea e avvia le VM
   community.vagrant.vagrant:
+    workdir: "{{ vagrant_workdir }}"
     instances: "{{ vms }}"
     default_box: "{{ vagrant_box }}"
     provider_name: "{{ vagrant_provider }}"
     state: up
-  environment:
-    MOLECULE_EPHEMERAL_DIRECTORY: "{{ vagrant_workdir }}"
 
 - name: Stato del Vagrantfile dopo
   ansible.builtin.stat:
@@ -30,6 +30,7 @@
   ansible.builtin.command:
     cmd: vagrant reload
     chdir: "{{ vagrant_workdir }}"
+  changed_when: true
   when:
     - vagrantfile_before.stat.exists
     - vagrantfile_before.stat.checksum != vagrantfile_after.stat.checksum
@@ -38,6 +39,7 @@
   ansible.builtin.file:
     path: "{{ vagrant_inventory_file | dirname }}"
     state: directory
+    mode: "0755"
 
 - name: Genera l'inventory delle VM
   ansible.builtin.template:

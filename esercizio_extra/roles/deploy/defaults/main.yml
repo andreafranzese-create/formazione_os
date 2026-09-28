@@ -36,7 +36,9 @@ node_exporter_version: "1.12.1"
 node_exporter_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
 node_exporter_user: vagrant
 node_exporter_bin: /usr/local/bin/node_exporter
-node_exporter_url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}.tar.gz"
+node_exporter_base_url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}"
+node_exporter_filename: "node_exporter-{{ node_exporter_version }}.linux-{{ node_exporter_arch }}.tar.gz"
+node_exporter_url: "{{ node_exporter_base_url }}/{{ node_exporter_filename }}"
 node_exporter_ports:
   elasticsearch-host: 9100
   monitoring-grafana: 9101
