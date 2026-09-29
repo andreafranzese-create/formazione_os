@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+  labels:
+    environment: dev
+    app: web
+    region: EU
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+      environment: dev
+  template:
+    metadata:
+      labels:
+        environment: dev
+        app: web
+        region: EU
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.27
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"

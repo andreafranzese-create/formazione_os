@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+  labels:
+    app: web
+    environment: dev
+spec:
+  type: LoadBalancer
+  selector:
+    app: web
+    environment: dev
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
